@@ -1,0 +1,40 @@
+# Publica a versão web do Cartório do Além no GitHub Pages.
+# O jogo não fica no git (o index.pck tem mais de 100 MB): ele vai como web.zip no último Release,
+# e esta automação baixa, descompacta e publica. Roda sozinha a cada Release novo, ou à mão em Actions.
+name: Publicar o jogo
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Baixa o web.zip do último Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo "${{ github.repository }}" --pattern 'web.zip' --dir .
+          mkdir _site
+          unzip -q web.zip -d _site
+          touch _site/.nojekyll
+          ls -la _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4
